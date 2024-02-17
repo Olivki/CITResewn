@@ -2,6 +2,7 @@ package shcm.shsupercm.fabric.citresewn.defaults.cit.conditions;
 
 import io.shcm.shsupercm.fabric.fletchingtable.api.Entrypoint;
 import net.minecraft.nbt.*;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import shcm.shsupercm.fabric.citresewn.api.CITConditionContainer;
 import shcm.shsupercm.fabric.citresewn.cit.CITCondition;
@@ -18,6 +19,8 @@ public class ConditionNBT extends CITCondition {
     @Entrypoint(CITConditionContainer.ENTRYPOINT)
     public static final CITConditionContainer<ConditionNBT> CONTAINER = new CITConditionContainer<>(ConditionNBT.class, ConditionNBT::new,
             "nbt");
+
+    private static final Pattern JSON_BEGIN_PATTERN = Pattern.compile("^ *[{\\[].*");
 
     protected String[] path;
 
@@ -122,9 +125,20 @@ public class ConditionNBT extends CITCondition {
     }
 
     private boolean testValue(NbtElement element) {
-        if (element instanceof NbtString nbtString) //noinspection ConstantConditions
-            return matchString.matches(nbtString.asString()) || matchString.matches(Text.Serialization.fromLenientJson(nbtString.asString()).getString());
-        else if (element instanceof NbtInt nbtInt && matchInteger != null)
+        if (element instanceof NbtString nbtString) { //noinspection ConstantConditions
+            String str = nbtString.asString();
+
+            if (matchString.matches(str)) {
+                return true;
+            }
+
+            if (JSON_BEGIN_PATTERN.matcher(str).matches()) {
+                MutableText value = Text.Serialization.fromLenientJson(str);
+                return value != null && matchString.matches(value.getString());
+            }
+
+            return false;
+        } else if (element instanceof NbtInt nbtInt && matchInteger != null)
             return nbtInt.equals(matchInteger);
         else if (element instanceof NbtByte nbtByte && matchByte != null)
             return nbtByte.equals(matchByte);
